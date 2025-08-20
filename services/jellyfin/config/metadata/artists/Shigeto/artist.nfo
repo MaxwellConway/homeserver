@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:11:13</dateadded>
+  <title>Shigeto</title>
+  <runtime>42</runtime>
+  <genre>Electro</genre>
+  <musicbrainzartistid>9006da5a-73cc-4b98-9395-78570b827fb1</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Shigeto/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Shigeto/backdrop.jpg</fanart>
+  </art>
+</artist>

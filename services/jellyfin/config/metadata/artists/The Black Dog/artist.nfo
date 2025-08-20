@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:11:29</dateadded>
+  <title>The Black Dog</title>
+  <runtime>75</runtime>
+  <musicbrainzartistid>a78d2a35-c083-4179-a5d8-49f84e5ec863</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/The Black Dog/folder.jpg</poster>
+    <fanart>/config/metadata/artists/The Black Dog/backdrop.jpg</fanart>
+  </art>
+</artist>

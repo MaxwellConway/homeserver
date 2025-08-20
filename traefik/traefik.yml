@@ -1,0 +1,24 @@
+# Simple Traefik Configuration
+entryPoints:
+  http:
+    address: ":80"
+  https:
+    address: ":443"
+
+# Enable dashboard
+api:
+  dashboard: true
+  insecure: false
+
+# Docker provider
+providers:
+  docker:
+    exposedByDefault: false
+
+# Let's Encrypt certificates
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: http

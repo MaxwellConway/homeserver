@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:49</dateadded>
+  <title>Lusine</title>
+  <runtime>102</runtime>
+  <genre>Electronic</genre>
+  <genre>Electronic, Dance</genre>
+  <musicbrainzartistid>24ee4021-50ac-4285-b76e-860082d0d731</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Lusine/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Lusine/backdrop.jpg</fanart>
+  </art>
+</artist>

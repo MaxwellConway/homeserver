@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:32</dateadded>
+  <title>Death Grips</title>
+  <runtime>13</runtime>
+  <musicbrainzartistid>f9133036-ab3d-4e97-bd11-7a2c98ad148a</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Death Grips/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Death Grips/backdrop.jpg</fanart>
+  </art>
+</artist>

@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  my-service:
+    image: nginx:latest  # Replace with your service image
+    container_name: my-service
+    restart: unless-stopped
+    # volumes:
+    #   - ./data:/app/data
+    # environment:
+    #   - ENV_VAR=value
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.my-service.rule=Host(`my-service.${DOMAIN}`)"
+      - "traefik.http.routers.my-service.entrypoints=https"
+      - "traefik.http.routers.my-service.tls.certresolver=letsencrypt"
+      - "traefik.http.services.my-service.loadbalancer.server.port=80"  # Change port as needed
+
+networks:
+  web:
+    external: true
+    name: ${TRAEFIK_PUBLIC_NETWORK}

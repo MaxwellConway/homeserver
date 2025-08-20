@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:11:30</dateadded>
+  <title>The Flashbulb</title>
+  <runtime>239</runtime>
+  <genre>Jazz</genre>
+  <genre>Electronic/Alternative</genre>
+  <musicbrainzartistid>24786816-025f-49f4-9787-4945a3311f96</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/The Flashbulb/folder.jpg</poster>
+    <fanart>/config/metadata/artists/The Flashbulb/backdrop.jpg</fanart>
+  </art>
+</artist>

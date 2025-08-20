@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    # user: 1025:100  # Will set permissions after container creates dirs
+    environment:
+      - JELLYFIN_PublishedServerUrl=https://media.${DOMAIN}
+    volumes:
+      # Jellyfin config and data
+      - ./config:/config
+      - ./cache:/cache
+      # NFS mounted media (read-only for safety)
+      - /mnt/media/Movies:/media/movies:ro
+      - /mnt/media/TVShows:/media/tv:ro
+      - /mnt/media/Music:/media/music:ro
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(`media.${DOMAIN}`)"
+      - "traefik.http.routers.jellyfin.entrypoints=https"
+      - "traefik.http.routers.jellyfin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+
+networks:
+  web:
+    external: true
+    name: ${TRAEFIK_PUBLIC_NETWORK}

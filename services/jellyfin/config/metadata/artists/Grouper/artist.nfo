@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:38</dateadded>
+  <title>Grouper</title>
+  <runtime>228</runtime>
+  <genre>Ambient</genre>
+  <genre>Pop, Rock</genre>
+  <genre>Avantgarde</genre>
+  <genre>Noise</genre>
+  <musicbrainzartistid>7e571e09-887e-4544-b993-eb75e7837ec1</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Grouper/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Grouper/backdrop.jpg</fanart>
+  </art>
+</artist>

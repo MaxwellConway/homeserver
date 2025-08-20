@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:09:56</dateadded>
+  <title>Autechre</title>
+  <runtime>483</runtime>
+  <genre>Abstract/IDM/Experimental</genre>
+  <genre>IDM</genre>
+  <genre>Abstract/IDM/Ambient</genre>
+  <genre>IDM / Abstract / Experimental</genre>
+  <genre>Abstract/IDM/Downtempo/Experimental</genre>
+  <genre>Alternative</genre>
+  <musicbrainzartistid>410c9baf-5469-44f6-9852-826524b80c61</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Autechre/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Autechre/backdrop.jpg</fanart>
+  </art>
+</artist>

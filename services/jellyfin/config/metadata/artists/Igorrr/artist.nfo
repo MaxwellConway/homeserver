@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:41</dateadded>
+  <title>Igorrr</title>
+  <runtime>168</runtime>
+  <genre>Electronic</genre>
+  <genre>Breakcore, Experimental</genre>
+  <musicbrainzartistid>aec46991-e896-4c1f-80cc-aed97b0cdc73</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Igorrr/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Igorrr/backdrop.jpg</fanart>
+  </art>
+</artist>

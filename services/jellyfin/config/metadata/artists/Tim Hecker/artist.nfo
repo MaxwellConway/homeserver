@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:11:31</dateadded>
+  <title>Tim Hecker</title>
+  <runtime>153</runtime>
+  <genre>Ambient</genre>
+  <genre>Electronic, Ambient</genre>
+  <musicbrainzartistid>c7ee3bc9-780c-42c0-91e9-4cd70ad692d3</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Tim Hecker/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Tim Hecker/backdrop.jpg</fanart>
+  </art>
+</artist>

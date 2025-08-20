@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:56</dateadded>
+  <title>Max Richter</title>
+  <runtime>236</runtime>
+  <genre>Klassiek</genre>
+  <genre>Classical</genre>
+  <musicbrainzartistid>509f20b2-5df3-4aec-9bbc-002131fb3f99</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Max Richter/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Max Richter/backdrop.jpg</fanart>
+  </art>
+</artist>

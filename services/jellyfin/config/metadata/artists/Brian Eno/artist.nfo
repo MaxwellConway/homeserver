@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:13</dateadded>
+  <title>Brian Eno</title>
+  <runtime>771</runtime>
+  <genre>Electronic</genre>
+  <genre>Ambient</genre>
+  <genre>Rock</genre>
+  <genre>Pop, Rock, Alternatif et Indé</genre>
+  <genre>Progressive Rock</genre>
+  <genre>Ambient, Prog-Rock</genre>
+  <genre>Pop, Rock, Alternative &amp; Indie</genre>
+  <musicbrainzartistid>ff95eb47-41c4-4f7f-a104-cdc30f02e872</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Brian Eno/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Brian Eno/backdrop.jpg</fanart>
+  </art>
+</artist>

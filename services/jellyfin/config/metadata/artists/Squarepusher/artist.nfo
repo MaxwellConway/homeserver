@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:11:24</dateadded>
+  <title>Squarepusher</title>
+  <runtime>307</runtime>
+  <genre>Electronic</genre>
+  <genre>Classique, Électronique ou concrète</genre>
+  <genre>Électronique, Techno</genre>
+  <genre>Electro / Dance</genre>
+  <musicbrainzartistid>4d86ad4e-28d8-4e9f-8cf4-735c57060fdc</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Squarepusher/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Squarepusher/backdrop.jpg</fanart>
+  </art>
+</artist>

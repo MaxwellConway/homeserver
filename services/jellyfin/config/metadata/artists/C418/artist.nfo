@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:18</dateadded>
+  <title>C418</title>
+  <runtime>50</runtime>
+  <genre>Electronic</genre>
+  <musicbrainzartistid>fac55e3c-d459-45ed-9f9f-f5078d3b3423</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/C418/folder.jpg</poster>
+    <fanart>/config/metadata/artists/C418/backdrop.jpg</fanart>
+  </art>
+</artist>

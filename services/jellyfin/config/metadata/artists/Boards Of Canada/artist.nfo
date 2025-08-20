@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:10</dateadded>
+  <title>Boards Of Canada</title>
+  <runtime>268</runtime>
+  <genre>Electronic</genre>
+  <musicbrainzartistid>69158f97-4c07-4c4e-baf8-4e4ab1ed666e</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Boards Of Canada/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Boards Of Canada/backdrop.jpg</fanart>
+  </art>
+</artist>

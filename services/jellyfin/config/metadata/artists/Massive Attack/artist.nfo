@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:55</dateadded>
+  <title>Massive Attack</title>
+  <runtime>285</runtime>
+  <genre>Trip Hop</genre>
+  <musicbrainzartistid>10adbe5e-a2c0-4bf3-8249-2b4cbf6e6ca8</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Massive Attack/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Massive Attack/backdrop.jpg</fanart>
+  </art>
+</artist>

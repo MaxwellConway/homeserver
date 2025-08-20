@@ -1,0 +1,42 @@
+# Environment and secrets
+.env
+*.env
+!*.env.example
+*.crt
+*.key
+*.pem
+*.p12
+*.kdbx
+
+# Docker / Compose artifacts
+*.pid
+*.sock
+*.log
+**/logs/
+**/tmp/
+**/data/
+**/cache/
+**/transcodes/
+**/backups/
+
+# Traefik
+traefik/letsencrypt/acme.json
+traefik/*.log
+traefik/*.db
+
+# Portainer
+portainer/portainer_data/
+
+# Jellyfin runtime (keep config tracked)
+services/jellyfin/cache/
+services/jellyfin/transcodes/
+services/jellyfin/logs/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.code-workspace

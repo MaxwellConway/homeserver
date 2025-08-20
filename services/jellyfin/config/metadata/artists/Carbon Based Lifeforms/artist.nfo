@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<artist>
+  <biography />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-17 20:10:19</dateadded>
+  <title>Carbon Based Lifeforms</title>
+  <runtime>452</runtime>
+  <genre>Ambient</genre>
+  <genre>Electronic</genre>
+  <genre>Acid, Downtempo, Ambient</genre>
+  <musicbrainzartistid>8229a8f1-b315-4fae-af57-b3eb71efdaf4</musicbrainzartistid>
+  <art>
+    <poster>/config/metadata/artists/Carbon Based Lifeforms/folder.jpg</poster>
+    <fanart>/config/metadata/artists/Carbon Based Lifeforms/backdrop.jpg</fanart>
+  </art>
+</artist>
