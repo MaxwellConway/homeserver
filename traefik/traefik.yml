@@ -19,6 +19,17 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
+      email: ${EMAIL}
       storage: /letsencrypt/acme.json
+      keyType: EC256
       httpChallenge:
         entryPoint: http
+      # DNS challenge for Cloudflare-proxied domains
+  letsencrypt-dns:
+    acme:
+      email: ${EMAIL}
+      storage: /letsencrypt/acme.json
+      keyType: EC256
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 30s
