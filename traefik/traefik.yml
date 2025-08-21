@@ -19,7 +19,7 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: ${EMAIL}
+      email: maxconway23@gmail.com
       storage: /letsencrypt/acme.json
       keyType: EC256
       httpChallenge:
@@ -27,7 +27,7 @@ certificatesResolvers:
       # DNS challenge for Cloudflare-proxied domains
   letsencrypt-dns:
     acme:
-      email: ${EMAIL}
+      email: maxconway23@gmail.com
       storage: /letsencrypt/acme.json
       keyType: EC256
       dnsChallenge:
