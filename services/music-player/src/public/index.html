@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #4a9eff;
+        }
+
+        .player-controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        .now-playing {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .song-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .song-artist {
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: #357abd;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .time {
+            font-size: 0.9em;
+            color: #aaa;
+            min-width: 45px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: #555;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4a9eff;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #aaa;
+        }
+
+        .song-list {
+            background: #2a2a2a;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .song-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #3a3a3a;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .song-item:hover {
+            background: #3a3a3a;
+        }
+
+        .song-item.playing {
+            background: #1a4a7a;
+        }
+
+        .song-item:last-child {
+            border-bottom: none;
+        }
+
+        .song-info {
+            flex: 1;
+        }
+
+        .song-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .song-details {
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        .song-duration {
+            color: #aaa;
+            font-size: 0.9em;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+
+        .stats {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Music Player</h1>
+        
+        <div class="player-controls">
+            <div class="now-playing">
+                <div class="song-title" id="currentTitle">No song selected</div>
+                <div class="song-artist" id="currentArtist"></div>
+            </div>
+            
+            <div class="controls">
+                <button id="prevBtn" disabled>⏮️ Previous</button>
+                <button id="playPauseBtn" disabled>▶️ Play</button>
+                <button id="nextBtn" disabled>⏭️ Next</button>
+            </div>
+            
+            <div class="progress-container">
+                <span class="time" id="currentTime">0:00</span>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <span class="time" id="totalTime">0:00</span>
+            </div>
+            
+            <audio id="audioPlayer" preload="none"></audio>
+        </div>
+
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search songs, artists, or albums...">
+        </div>
+
+        <div class="stats" id="stats">Loading music library...</div>
+
+        <div class="song-list" id="songList">
+            <div class="loading">Loading songs...</div>
+        </div>
+    </div>
+
+    <script>
+        class MusicPlayer {
+            constructor() {
+                this.songs = [];
+                this.filteredSongs = [];
+                this.currentIndex = -1;
+                this.isPlaying = false;
+                
+                this.audioPlayer = document.getElementById('audioPlayer');
+                this.playPauseBtn = document.getElementById('playPauseBtn');
+                this.prevBtn = document.getElementById('prevBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                this.progressBar = document.getElementById('progressBar');
+                this.progressFill = document.getElementById('progressFill');
+                this.currentTime = document.getElementById('currentTime');
+                this.totalTime = document.getElementById('totalTime');
+                this.currentTitle = document.getElementById('currentTitle');
+                this.currentArtist = document.getElementById('currentArtist');
+                this.songList = document.getElementById('songList');
+                this.searchInput = document.getElementById('searchInput');
+                this.stats = document.getElementById('stats');
+                
+                this.initializeEventListeners();
+                this.loadSongs();
+            }
+
+            initializeEventListeners() {
+                this.playPauseBtn.addEventListener('click', () => this.togglePlayPause());
+                this.prevBtn.addEventListener('click', () => this.previousSong());
+                this.nextBtn.addEventListener('click', () => this.nextSong());
+                
+                this.progressBar.addEventListener('click', (e) => this.seekTo(e));
+                
+                this.audioPlayer.addEventListener('timeupdate', () => this.updateProgress());
+                this.audioPlayer.addEventListener('ended', () => this.nextSong());
+                this.audioPlayer.addEventListener('loadedmetadata', () => this.updateDuration());
+                
+                this.searchInput.addEventListener('input', (e) => this.filterSongs(e.target.value));
+            }
+
+            async loadSongs() {
+                try {
+                    const response = await fetch('/api/songs');
+                    this.songs = await response.json();
+                    this.filteredSongs = [...this.songs];
+                    this.renderSongs();
+                    this.updateStats();
+                } catch (error) {
+                    console.error('Failed to load songs:', error);
+                    this.songList.innerHTML = '<div class="loading">Failed to load songs</div>';
+                }
+            }
+
+            renderSongs() {
+                if (this.filteredSongs.length === 0) {
+                    this.songList.innerHTML = '<div class="loading">No songs found</div>';
+                    return;
+                }
+
+                this.songList.innerHTML = this.filteredSongs.map((song, index) => `
+                    <div class="song-item" data-index="${index}" onclick="player.playSong(${index})">
+                        <div class="song-info">
+                            <div class="song-name">${this.escapeHtml(song.title)}</div>
+                            <div class="song-details">${this.escapeHtml(song.artist)} • ${this.escapeHtml(song.album)}</div>
+                        </div>
+                        <div class="song-duration">${this.formatTime(song.duration)}</div>
+                    </div>
+                `).join('');
+            }
+
+            filterSongs(query) {
+                const searchTerm = query.toLowerCase();
+                this.filteredSongs = this.songs.filter(song => 
+                    song.title.toLowerCase().includes(searchTerm) ||
+                    song.artist.toLowerCase().includes(searchTerm) ||
+                    song.album.toLowerCase().includes(searchTerm) ||
+                    song.filename.toLowerCase().includes(searchTerm)
+                );
+                this.renderSongs();
+                this.updateStats();
+            }
+
+            updateStats() {
+                const total = this.songs.length;
+                const filtered = this.filteredSongs.length;
+                const totalDuration = this.songs.reduce((sum, song) => sum + song.duration, 0);
+                
+                this.stats.textContent = `${filtered} of ${total} songs • ${this.formatTime(totalDuration)} total`;
+            }
+
+            playSong(index) {
+                if (index < 0 || index >= this.filteredSongs.length) return;
+                
+                this.currentIndex = index;
+                const song = this.filteredSongs[index];
+                
+                this.audioPlayer.src = song.audioUrl;
+                this.audioPlayer.load();
+                
+                this.currentTitle.textContent = song.title;
+                this.currentArtist.textContent = `${song.artist} • ${song.album}`;
+                
+                this.updatePlayingState();
+                this.audioPlayer.play();
+                this.isPlaying = true;
+                this.playPauseBtn.textContent = '⏸️ Pause';
+                
+                this.enableControls();
+            }
+
+            togglePlayPause() {
+                if (this.currentIndex === -1) return;
+                
+                if (this.isPlaying) {
+                    this.audioPlayer.pause();
+                    this.isPlaying = false;
+                    this.playPauseBtn.textContent = '▶️ Play';
+                } else {
+                    this.audioPlayer.play();
+                    this.isPlaying = true;
+                    this.playPauseBtn.textContent = '⏸️ Pause';
+                }
+            }
+
+            previousSong() {
+                if (this.currentIndex > 0) {
+                    this.playSong(this.currentIndex - 1);
+                }
+            }
+
+            nextSong() {
+                if (this.currentIndex < this.filteredSongs.length - 1) {
+                    this.playSong(this.currentIndex + 1);
+                }
+            }
+
+            seekTo(e) {
+                if (this.currentIndex === -1) return;
+                
+                const rect = this.progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                const seekTime = percent * this.audioPlayer.duration;
+                this.audioPlayer.currentTime = seekTime;
+            }
+
+            updateProgress() {
+                if (this.audioPlayer.duration) {
+                    const percent = (this.audioPlayer.currentTime / this.audioPlayer.duration) * 100;
+                    this.progressFill.style.width = percent + '%';
+                    this.currentTime.textContent = this.formatTime(this.audioPlayer.currentTime);
+                }
+            }
+
+            updateDuration() {
+                this.totalTime.textContent = this.formatTime(this.audioPlayer.duration);
+            }
+
+            updatePlayingState() {
+                document.querySelectorAll('.song-item').forEach((item, index) => {
+                    item.classList.toggle('playing', index === this.currentIndex);
+                });
+            }
+
+            enableControls() {
+                this.playPauseBtn.disabled = false;
+                this.prevBtn.disabled = this.currentIndex <= 0;
+                this.nextBtn.disabled = this.currentIndex >= this.filteredSongs.length - 1;
+            }
+
+            formatTime(seconds) {
+                if (!seconds || isNaN(seconds)) return '0:00';
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // Initialize the music player
+        const player = new MusicPlayer();
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  music-player:
+    build: .
+    container_name: music-player
+    restart: unless-stopped
+    volumes:
+      # NFS mounted music directory (read-only)
+      - /mnt/media/Music:/music:ro
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.music-player.rule=Host(`music.${DOMAIN}`)"
+      - "traefik.http.routers.music-player.entrypoints=https"
+      - "traefik.http.routers.music-player.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.services.music-player.loadbalancer.server.port=3000"
+
+networks:
+  web:
+    external: true
+    name: ${TRAEFIK_PUBLIC_NETWORK}
