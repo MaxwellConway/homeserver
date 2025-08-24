@@ -119,6 +119,67 @@
             color: #aaa;
         }
 
+        .skeleton-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .skeleton-info {
+            flex: 1;
+        }
+
+        .skeleton-line {
+            height: 16px;
+            background: linear-gradient(90deg, #3a3a3a 25%, #4a4a4a 50%, #3a3a3a 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-line.short {
+            width: 60%;
+        }
+
+        .skeleton-line.long {
+            width: 80%;
+        }
+
+        .skeleton-duration {
+            width: 50px;
+            height: 16px;
+            background: linear-gradient(90deg, #3a3a3a 25%, #4a4a4a 50%, #3a3a3a 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .load-more {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .load-more button {
+            background: #2a2a2a;
+            border: 1px solid #555;
+            padding: 12px 24px;
+        }
+
+        .load-more button:hover {
+            background: #3a3a3a;
+        }
+
         .song-list {
             background: #2a2a2a;
             border-radius: 10px;
@@ -227,6 +288,10 @@
 
         <div class="stats" id="stats">Loading music library...</div>
 
+        <div class="load-more" id="loadMoreContainer" style="display: none;">
+            <button id="loadMoreBtn">Load More Songs</button>
+        </div>
+
         <div class="song-list" id="songList">
             <div class="loading">Loading songs...</div>
         </div>
@@ -235,10 +300,16 @@
     <script>
         class MusicPlayer {
             constructor() {
-                this.songs = [];
-                this.filteredSongs = [];
+                this.allSongs = []; // All loaded songs
+                this.displayedSongs = []; // Currently displayed songs
                 this.currentIndex = -1;
                 this.isPlaying = false;
+                this.currentPage = 1;
+                this.totalSongs = 0;
+                this.hasMorePages = true;
+                this.isLoading = false;
+                this.currentSearch = '';
+                this.searchTimeout = null;
                 
                 this.audioPlayer = document.getElementById('audioPlayer');
                 this.playPauseBtn = document.getElementById('playPauseBtn');
@@ -253,9 +324,11 @@
                 this.songList = document.getElementById('songList');
                 this.searchInput = document.getElementById('searchInput');
                 this.stats = document.getElementById('stats');
+                this.loadMoreContainer = document.getElementById('loadMoreContainer');
+                this.loadMoreBtn = document.getElementById('loadMoreBtn');
                 
                 this.initializeEventListeners();
-                this.loadSongs();
+                this.loadInitialData();
             }
 
             initializeEventListeners() {
@@ -269,29 +342,122 @@
                 this.audioPlayer.addEventListener('ended', () => this.nextSong());
                 this.audioPlayer.addEventListener('loadedmetadata', () => this.updateDuration());
                 
-                this.searchInput.addEventListener('input', (e) => this.filterSongs(e.target.value));
+                this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+                this.loadMoreBtn.addEventListener('click', () => this.loadMoreSongs());
+                
+                // Infinite scroll detection
+                window.addEventListener('scroll', () => this.handleScroll());
             }
 
-            async loadSongs() {
+            async loadInitialData() {
                 try {
-                    const response = await fetch('/api/songs');
-                    this.songs = await response.json();
-                    this.filteredSongs = [...this.songs];
-                    this.renderSongs();
-                    this.updateStats();
+                    // Get total count first
+                    const countResponse = await fetch('/api/songs/count');
+                    const countData = await countResponse.json();
+                    this.totalSongs = countData.count;
+                    
+                    // Load first page
+                    await this.loadSongs(1, '');
                 } catch (error) {
-                    console.error('Failed to load songs:', error);
+                    console.error('Failed to load initial data:', error);
                     this.songList.innerHTML = '<div class="loading">Failed to load songs</div>';
                 }
             }
 
+            async loadSongs(page = 1, search = '', append = false) {
+                if (this.isLoading) return;
+                
+                this.isLoading = true;
+                
+                try {
+                    const params = new URLSearchParams({
+                        page: page.toString(),
+                        limit: '50',
+                        search: search
+                    });
+                    
+                    if (!append) {
+                        this.showSkeletonLoader();
+                    }
+                    
+                    const response = await fetch(`/api/songs?${params}`);
+                    const data = await response.json();
+                    
+                    if (append) {
+                        this.allSongs.push(...data.songs);
+                        this.displayedSongs.push(...data.songs);
+                    } else {
+                        this.allSongs = data.songs;
+                        this.displayedSongs = data.songs;
+                    }
+                    
+                    this.currentPage = data.pagination.page;
+                    this.hasMorePages = data.pagination.hasNext;
+                    this.totalSongs = data.pagination.totalSongs;
+                    
+                    this.renderSongs();
+                    this.updateStats();
+                    this.updateLoadMoreButton();
+                    
+                } catch (error) {
+                    console.error('Failed to load songs:', error);
+                    if (!append) {
+                        this.songList.innerHTML = '<div class="loading">Failed to load songs</div>';
+                    }
+                } finally {
+                    this.isLoading = false;
+                }
+            }
+
+            async loadMoreSongs() {
+                if (!this.hasMorePages || this.isLoading) return;
+                await this.loadSongs(this.currentPage + 1, this.currentSearch, true);
+            }
+
+            handleSearch(query) {
+                // Debounce search
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    this.currentSearch = query;
+                    this.currentPage = 1;
+                    this.loadSongs(1, query, false);
+                }, 300);
+            }
+
+            handleScroll() {
+                if (this.isLoading || !this.hasMorePages) return;
+                
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const windowHeight = window.innerHeight;
+                const documentHeight = document.documentElement.scrollHeight;
+                
+                // Load more when user is 200px from bottom
+                if (scrollTop + windowHeight >= documentHeight - 200) {
+                    this.loadMoreSongs();
+                }
+            }
+
+            showSkeletonLoader() {
+                const skeletonItems = Array(10).fill(0).map(() => `
+                    <div class="skeleton-item">
+                        <div class="skeleton-info">
+                            <div class="skeleton-line long"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                        <div class="skeleton-duration"></div>
+                    </div>
+                `).join('');
+                
+                this.songList.innerHTML = skeletonItems;
+            }
+
             renderSongs() {
-                if (this.filteredSongs.length === 0) {
+                if (this.displayedSongs.length === 0) {
                     this.songList.innerHTML = '<div class="loading">No songs found</div>';
                     return;
                 }
 
-                this.songList.innerHTML = this.filteredSongs.map((song, index) => `
+                this.songList.innerHTML = this.displayedSongs.map((song, index) => `
                     <div class="song-item" data-index="${index}" onclick="player.playSong(${index})">
                         <div class="song-info">
                             <div class="song-name">${this.escapeHtml(song.title)}</div>
@@ -302,31 +468,37 @@
                 `).join('');
             }
 
-            filterSongs(query) {
-                const searchTerm = query.toLowerCase();
-                this.filteredSongs = this.songs.filter(song => 
-                    song.title.toLowerCase().includes(searchTerm) ||
-                    song.artist.toLowerCase().includes(searchTerm) ||
-                    song.album.toLowerCase().includes(searchTerm) ||
-                    song.filename.toLowerCase().includes(searchTerm)
-                );
-                this.renderSongs();
-                this.updateStats();
+            updateLoadMoreButton() {
+                if (this.hasMorePages && this.displayedSongs.length > 0) {
+                    this.loadMoreContainer.style.display = 'block';
+                    this.loadMoreBtn.textContent = this.isLoading ? 'Loading...' : 'Load More Songs';
+                    this.loadMoreBtn.disabled = this.isLoading;
+                } else {
+                    this.loadMoreContainer.style.display = 'none';
+                }
             }
 
             updateStats() {
-                const total = this.songs.length;
-                const filtered = this.filteredSongs.length;
-                const totalDuration = this.songs.reduce((sum, song) => sum + song.duration, 0);
+                const displayed = this.displayedSongs.length;
+                const total = this.totalSongs;
+                const totalDuration = this.displayedSongs.reduce((sum, song) => sum + song.duration, 0);
                 
-                this.stats.textContent = `${filtered} of ${total} songs • ${this.formatTime(totalDuration)} total`;
+                let statsText = `Showing ${displayed} of ${total} songs`;
+                if (totalDuration > 0) {
+                    statsText += ` • ${this.formatTime(totalDuration)} loaded`;
+                }
+                if (this.currentSearch) {
+                    statsText += ` • Filtered by "${this.currentSearch}"`;
+                }
+                
+                this.stats.textContent = statsText;
             }
 
             playSong(index) {
-                if (index < 0 || index >= this.filteredSongs.length) return;
+                if (index < 0 || index >= this.displayedSongs.length) return;
                 
                 this.currentIndex = index;
-                const song = this.filteredSongs[index];
+                const song = this.displayedSongs[index];
                 
                 this.audioPlayer.src = song.audioUrl;
                 this.audioPlayer.load();
@@ -363,8 +535,15 @@
             }
 
             nextSong() {
-                if (this.currentIndex < this.filteredSongs.length - 1) {
+                if (this.currentIndex < this.displayedSongs.length - 1) {
                     this.playSong(this.currentIndex + 1);
+                } else if (this.hasMorePages) {
+                    // Auto-load more songs if we're at the end and there are more
+                    this.loadMoreSongs().then(() => {
+                        if (this.currentIndex < this.displayedSongs.length - 1) {
+                            this.playSong(this.currentIndex + 1);
+                        }
+                    });
                 }
             }
 
@@ -398,7 +577,7 @@
             enableControls() {
                 this.playPauseBtn.disabled = false;
                 this.prevBtn.disabled = this.currentIndex <= 0;
-                this.nextBtn.disabled = this.currentIndex >= this.filteredSongs.length - 1;
+                this.nextBtn.disabled = this.currentIndex >= this.displayedSongs.length - 1 && !this.hasMorePages;
             }
 
             formatTime(seconds) {
