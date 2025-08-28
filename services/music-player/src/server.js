@@ -1,19 +1,21 @@
 const express = require('express');
+const compression = require('compression');
 const path = require('path');
 const fs = require('fs').promises;
 const { parseFile } = require('music-metadata');
+const MusicDatabase = require('./database');
+const MusicScanner = require('./scanner');
 
 const app = express();
 const PORT = 3000;
 const MUSIC_DIR = '/music';
 
-// Supported audio file extensions
-const AUDIO_EXTENSIONS = ['.mp3', '.flac', '.m4a', '.wav'];
+// Initialize database and scanner
+const db = new MusicDatabase();
+const scanner = new MusicScanner(db, MUSIC_DIR);
 
-// Cache for scanned songs
-let songsCache = [];
-let lastScanTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Enable compression for all responses
+app.use(compression());
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -21,107 +23,38 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Serve audio files directly from music directory
 app.use('/audio', express.static(MUSIC_DIR));
 
-// Recursively scan directory for audio files
-async function scanMusicDirectory(dir, relativePath = '') {
-  const songs = [];
-  
-  try {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      const relativeFilePath = path.join(relativePath, entry.name);
-      
-      if (entry.isDirectory()) {
-        // Recursively scan subdirectories
-        const subSongs = await scanMusicDirectory(fullPath, relativeFilePath);
-        songs.push(...subSongs);
-      } else if (entry.isFile()) {
-        const ext = path.extname(entry.name).toLowerCase();
-        if (AUDIO_EXTENSIONS.includes(ext)) {
-          try {
-            // Get basic metadata
-            const metadata = await parseFile(fullPath);
-            
-            songs.push({
-              filename: entry.name,
-              path: relativeFilePath,
-              audioUrl: `/audio/${relativeFilePath}`,
-              title: metadata.common.title || entry.name,
-              artist: metadata.common.artist || 'Unknown Artist',
-              album: metadata.common.album || 'Unknown Album',
-              albumArtist: metadata.common.albumartist || metadata.common.artist || 'Unknown Artist',
-              genre: metadata.common.genre ? metadata.common.genre.join(', ') : 'Unknown',
-              year: metadata.common.year || null,
-              track: metadata.common.track?.no || null,
-              duration: metadata.format.duration || 0,
-              size: (await fs.stat(fullPath)).size,
-              artworkUrl: `/api/artwork/${encodeURIComponent(relativeFilePath)}`
-            });
-          } catch (metadataError) {
-            // If metadata parsing fails, still include the file with basic info
-            console.warn(`Could not parse metadata for ${fullPath}:`, metadataError.message);
-            songs.push({
-              filename: entry.name,
-              path: relativeFilePath,
-              audioUrl: `/audio/${relativeFilePath}`,
-              title: entry.name,
-              artist: 'Unknown Artist',
-              album: 'Unknown Album',
-              albumArtist: 'Unknown Artist',
-              genre: 'Unknown',
-              year: null,
-              track: null,
-              duration: 0,
-              size: (await fs.stat(fullPath)).size,
-              artworkUrl: `/api/artwork/${encodeURIComponent(relativeFilePath)}`
-            });
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error(`Error scanning directory ${dir}:`, error.message);
-  }
-  
-  return songs;
-}
+// Cache control middleware for API responses
+app.use('/api', (req, res, next) => {
+  // Cache API responses for 5 minutes
+  res.set('Cache-Control', 'public, max-age=300');
+  next();
+});
 
 // API endpoint to get songs with pagination and search
 app.get('/api/songs', async (req, res) => {
   try {
-    const now = Date.now();
-    
-    // Ensure cache is populated
-    if (songsCache.length === 0 || (now - lastScanTime) > CACHE_DURATION) {
-      console.log('Scanning music directory...');
-      songsCache = await scanMusicDirectory(MUSIC_DIR);
-      lastScanTime = now;
-      console.log(`Found ${songsCache.length} audio files`);
-    }
+    // Trigger quick scan check (non-blocking)
+    scanner.quickScan().catch(console.error);
     
     // Parse query parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const search = req.query.search || '';
     
-    // Filter songs based on search query
-    let filteredSongs = songsCache;
+    let songs;
     if (search) {
-      const searchLower = search.toLowerCase();
-      filteredSongs = songsCache.filter(song => 
-        song.title.toLowerCase().includes(searchLower) ||
-        song.artist.toLowerCase().includes(searchLower) ||
-        song.album.toLowerCase().includes(searchLower) ||
-        song.filename.toLowerCase().includes(searchLower)
-      );
+      // Use database search for better performance
+      songs = await db.getSongsBySearch(search, limit * 10); // Get more for pagination
+    } else {
+      // Get all songs from database
+      songs = await db.getAllSongs();
     }
     
     // Calculate pagination
-    const totalSongs = filteredSongs.length;
+    const totalSongs = songs.length;
     const totalPages = Math.ceil(totalSongs / limit);
     const offset = (page - 1) * limit;
-    const paginatedSongs = filteredSongs.slice(offset, offset + limit);
+    const paginatedSongs = songs.slice(offset, offset + limit);
     
     res.json({
       songs: paginatedSongs,
@@ -133,7 +66,8 @@ app.get('/api/songs', async (req, res) => {
         hasNext: page < totalPages,
         hasPrev: page > 1
       },
-      search
+      search,
+      scanProgress: scanner.getScanProgress()
     });
   } catch (error) {
     console.error('Error getting songs:', error);
@@ -144,17 +78,11 @@ app.get('/api/songs', async (req, res) => {
 // API endpoint to get total song count (for initial load)
 app.get('/api/songs/count', async (req, res) => {
   try {
-    const now = Date.now();
-    
-    // Ensure cache is populated
-    if (songsCache.length === 0 || (now - lastScanTime) > CACHE_DURATION) {
-      console.log('Scanning music directory for count...');
-      songsCache = await scanMusicDirectory(MUSIC_DIR);
-      lastScanTime = now;
-      console.log(`Found ${songsCache.length} audio files`);
-    }
-    
-    res.json({ count: songsCache.length });
+    const songs = await db.getAllSongs();
+    res.json({ 
+      count: songs.length,
+      scanProgress: scanner.getScanProgress()
+    });
   } catch (error) {
     console.error('Error getting song count:', error);
     res.status(500).json({ error: 'Failed to get song count' });
@@ -198,41 +126,7 @@ app.get('/api/artwork/:filePath(*)', async (req, res) => {
 // API endpoint to get albums with artwork
 app.get('/api/albums', async (req, res) => {
   try {
-    const now = Date.now();
-    
-    // Ensure cache is populated
-    if (songsCache.length === 0 || (now - lastScanTime) > CACHE_DURATION) {
-      console.log('Scanning music directory for albums...');
-      songsCache = await scanMusicDirectory(MUSIC_DIR);
-      lastScanTime = now;
-    }
-    
-    // Group songs by album
-    const albumsMap = new Map();
-    songsCache.forEach(song => {
-      const albumKey = `${song.albumArtist} - ${song.album}`;
-      if (!albumsMap.has(albumKey)) {
-        albumsMap.set(albumKey, {
-          album: song.album,
-          artist: song.albumArtist,
-          year: song.year,
-          artworkUrl: song.artworkUrl,
-          songs: []
-        });
-      }
-      albumsMap.get(albumKey).songs.push(song);
-    });
-    
-    // Convert to array and add metadata
-    const albums = Array.from(albumsMap.values()).map(album => ({
-      ...album,
-      songCount: album.songs.length,
-      totalDuration: album.songs.reduce((sum, song) => sum + song.duration, 0)
-    }));
-    
-    // Sort by album name
-    albums.sort((a, b) => a.album.localeCompare(b.album));
-    
+    const albums = await db.getAlbums();
     res.json(albums);
   } catch (error) {
     console.error('Error getting albums:', error);
@@ -247,31 +141,11 @@ app.get('/api/album/:artist/:album', async (req, res) => {
     const decodedArtist = decodeURIComponent(artist);
     const decodedAlbum = decodeURIComponent(album);
     
-    const now = Date.now();
-    
-    // Ensure cache is populated
-    if (songsCache.length === 0 || (now - lastScanTime) > CACHE_DURATION) {
-      console.log('Scanning music directory for album details...');
-      songsCache = await scanMusicDirectory(MUSIC_DIR);
-      lastScanTime = now;
-    }
-    
-    // Find songs for this album
-    const albumSongs = songsCache.filter(song => 
-      song.albumArtist === decodedArtist && song.album === decodedAlbum
-    );
+    const albumSongs = await db.getAlbumDetails(decodedArtist, decodedAlbum);
     
     if (albumSongs.length === 0) {
       return res.status(404).json({ error: 'Album not found' });
     }
-    
-    // Sort songs by track number, then by title
-    albumSongs.sort((a, b) => {
-      if (a.track && b.track) {
-        return a.track - b.track;
-      }
-      return a.title.localeCompare(b.title);
-    });
     
     // Create album info
     const albumInfo = {
@@ -296,19 +170,7 @@ app.get('/api/artist/:name', async (req, res) => {
   try {
     const artistName = decodeURIComponent(req.params.name);
     
-    const now = Date.now();
-    
-    // Ensure cache is populated
-    if (songsCache.length === 0 || (now - lastScanTime) > CACHE_DURATION) {
-      console.log('Scanning music directory for artist details...');
-      songsCache = await scanMusicDirectory(MUSIC_DIR);
-      lastScanTime = now;
-    }
-    
-    // Find songs for this artist
-    const artistSongs = songsCache.filter(song => 
-      song.albumArtist === artistName
-    );
+    const artistSongs = await db.getArtistDetails(artistName);
     
     if (artistSongs.length === 0) {
       return res.status(404).json({ error: 'Artist not found' });
@@ -329,29 +191,12 @@ app.get('/api/artist/:name', async (req, res) => {
       albumsMap.get(song.album).songs.push(song);
     });
     
-    // Convert to array and sort albums by year, then by name
-    const albums = Array.from(albumsMap.values()).map(album => {
-      // Sort songs within each album by track number
-      album.songs.sort((a, b) => {
-        if (a.track && b.track) {
-          return a.track - b.track;
-        }
-        return a.title.localeCompare(b.title);
-      });
-      
-      return {
-        ...album,
-        songCount: album.songs.length,
-        totalDuration: album.songs.reduce((sum, song) => sum + song.duration, 0)
-      };
-    });
-    
-    albums.sort((a, b) => {
-      if (a.year && b.year) {
-        return b.year - a.year; // Newest first
-      }
-      return a.album.localeCompare(b.album);
-    });
+    // Convert to array and add metadata
+    const albums = Array.from(albumsMap.values()).map(album => ({
+      ...album,
+      songCount: album.songs.length,
+      totalDuration: album.songs.reduce((sum, song) => sum + song.duration, 0)
+    }));
     
     // Create artist info
     const artistInfo = {
@@ -376,44 +221,7 @@ app.get('/api/artist/:name', async (req, res) => {
 // API endpoint to get artists
 app.get('/api/artists', async (req, res) => {
   try {
-    const now = Date.now();
-    
-    // Ensure cache is populated
-    if (songsCache.length === 0 || (now - lastScanTime) > CACHE_DURATION) {
-      console.log('Scanning music directory for artists...');
-      songsCache = await scanMusicDirectory(MUSIC_DIR);
-      lastScanTime = now;
-    }
-    
-    // Group songs by artist
-    const artistsMap = new Map();
-    songsCache.forEach(song => {
-      const artistKey = song.albumArtist;
-      if (!artistsMap.has(artistKey)) {
-        artistsMap.set(artistKey, {
-          name: song.albumArtist,
-          albums: new Set(),
-          songs: []
-        });
-      }
-      const artist = artistsMap.get(artistKey);
-      artist.albums.add(song.album);
-      artist.songs.push(song);
-    });
-    
-    // Convert to array and add metadata
-    const artists = Array.from(artistsMap.values()).map(artist => ({
-      name: artist.name,
-      albumCount: artist.albums.size,
-      songCount: artist.songs.length,
-      totalDuration: artist.songs.reduce((sum, song) => sum + song.duration, 0),
-      // Use artwork from first song
-      artworkUrl: artist.songs[0]?.artworkUrl
-    }));
-    
-    // Sort by artist name
-    artists.sort((a, b) => a.name.localeCompare(b.name));
-    
+    const artists = await db.getArtists();
     res.json(artists);
   } catch (error) {
     console.error('Error getting artists:', error);
@@ -421,9 +229,28 @@ app.get('/api/artists', async (req, res) => {
   }
 });
 
+// API endpoint to get scan progress
+app.get('/api/scan/progress', (req, res) => {
+  res.json(scanner.getScanProgress());
+});
+
+// API endpoint to trigger manual scan
+app.post('/api/scan/start', (req, res) => {
+  if (scanner.isScanning) {
+    return res.json({ message: 'Scan already in progress', progress: scanner.getScanProgress() });
+  }
+  
+  scanner.startBackgroundScan();
+  res.json({ message: 'Background scan started', progress: scanner.getScanProgress() });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    scanProgress: scanner.getScanProgress()
+  });
 });
 
 // Serve the main page for all other routes
@@ -431,18 +258,45 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Music player server running on port ${PORT}`);
-  console.log(`Music directory: ${MUSIC_DIR}`);
-  
-  // Initial scan on startup
-  scanMusicDirectory(MUSIC_DIR)
-    .then(songs => {
-      songsCache = songs;
-      lastScanTime = Date.now();
-      console.log(`Initial scan complete: ${songs.length} audio files found`);
-    })
-    .catch(error => {
-      console.error('Initial scan failed:', error);
+// Initialize database and start server
+async function startServer() {
+  try {
+    console.log('Initializing database...');
+    await db.init();
+    
+    console.log('Starting server...');
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Music player server running on port ${PORT}`);
+      console.log(`Music directory: ${MUSIC_DIR}`);
+      
+      // Check if we need an initial scan
+      db.getAllSongs().then(songs => {
+        if (songs.length === 0) {
+          console.log('No songs in database, starting initial scan...');
+          scanner.startBackgroundScan();
+        } else {
+          console.log(`Database contains ${songs.length} songs`);
+          // Trigger a quick scan to check for new files
+          scanner.quickScan();
+        }
+      }).catch(error => {
+        console.error('Error checking database:', error);
+        console.log('Starting initial scan...');
+        scanner.startBackgroundScan();
+      });
     });
-});
+    
+    // Graceful shutdown
+    process.on('SIGINT', async () => {
+      console.log('Shutting down gracefully...');
+      await db.close();
+      process.exit(0);
+    });
+    
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

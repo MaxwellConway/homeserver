@@ -16,15 +16,19 @@ COPY client/ ./
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:18-alpine
 
+# Create app directory
 WORKDIR /app
 
-# Copy server package files
+# Install SQLite3 build dependencies for Alpine
+RUN apk add --no-cache python3 make g++
+
+# Copy package files
 COPY package*.json ./
 
-# Install server dependencies
-RUN npm install --only=production
+# Install dependencies
+RUN npm install --omit=dev
 
 # Copy server source code
 COPY src/ ./src/
@@ -32,14 +36,22 @@ COPY src/ ./src/
 # Copy built React app from client-build stage
 COPY --from=client-build /app/client/build ./src/public
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
+# Create data directory for database
+RUN mkdir -p /data && \
+    addgroup -g 1001 -S nodejs && \
     adduser -S musicplayer -u 1001
 
-# Change ownership of the app directory
-RUN chown -R musicplayer:nodejs /app
+# Change ownership of directories
+RUN chown -R musicplayer:nodejs /app /data
+
+# Switch to non-root user
 USER musicplayer
 
+# Create volume for persistent database storage
+VOLUME ["/data"]
+
+# Expose port
 EXPOSE 3000
 
-CMD ["node", "src/server.js"]
+# Start the application
+CMD ["npm", "start"]

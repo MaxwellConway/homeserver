@@ -8,6 +8,8 @@ services:
     volumes:
       # NFS mounted music directory (read-only)
       - /mnt/media/Music:/music:ro
+      # Persistent database storage
+      - music-player-data:/data
     networks:
       - web
     labels:
@@ -16,6 +18,9 @@ services:
       - "traefik.http.routers.music-player.entrypoints=https"
       - "traefik.http.routers.music-player.tls.certresolver=letsencrypt-dns"
       - "traefik.http.services.music-player.loadbalancer.server.port=3000"
+
+volumes:
+  music-player-data:
 
 networks:
   web:
