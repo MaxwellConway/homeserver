@@ -1,0 +1,22 @@
+{
+  "name": "screengrab-service",
+  "version": "1.0.0",
+  "description": "Random screenshot service for Jellyfin media library",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "author": "Maxwell Conway",
+  "license": "MIT"
+}

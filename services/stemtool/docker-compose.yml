@@ -1,0 +1,22 @@
+
+services:
+  stemtool:
+    build: .
+    container_name: stemtool
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stemtool.rule=Host(`stemtool.maxconway.com`)"
+      - "traefik.http.routers.stemtool.tls=true"
+      - "traefik.http.routers.stemtool.tls.certresolver=lets-encrypt"
+      - "traefik.http.services.stemtool.loadbalancer.server.port=3001"
+
+networks:
+  web:
+    external: true

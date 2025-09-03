@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screengrab - Random Movie & TV Screenshots</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Screengrab</h1>
+            <p>Random screenshots from your Jellyfin library</p>
+        </header>
+
+        <main>
+            <div class="controls">
+                <button id="newScreenshot" class="btn-primary">Get New Screenshot</button>
+                <div class="status" id="status">Ready</div>
+            </div>
+
+            <div class="screenshot-container" id="screenshotContainer">
+                <div class="placeholder">
+                    <div class="placeholder-icon">📸</div>
+                    <p>Click "Get New Screenshot" to start</p>
+                </div>
+            </div>
+
+            <div class="metadata" id="metadata" style="display: none;">
+                <h2 id="title"></h2>
+                <div class="metadata-grid">
+                    <div class="metadata-item">
+                        <span class="label">Type:</span>
+                        <span id="type"></span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="label">Year:</span>
+                        <span id="year"></span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="label">Duration:</span>
+                        <span id="duration"></span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="label">Screenshot at:</span>
+                        <span id="timestamp"></span>
+                    </div>
+                    <div class="metadata-item series-info" id="seriesInfo" style="display: none;">
+                        <span class="label">Series:</span>
+                        <span id="seriesName"></span>
+                    </div>
+                    <div class="metadata-item episode-info" id="episodeInfo" style="display: none;">
+                        <span class="label">Episode:</span>
+                        <span id="episodeDetails"></span>
+                    </div>
+                </div>
+                <div class="overview" id="overview"></div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by Jellyfin & FFmpeg</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

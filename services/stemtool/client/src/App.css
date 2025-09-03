@@ -1,0 +1,40 @@
+/* Additional styles specific to the App component */
+.App {
+  min-height: 100vh;
+}
+
+.job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.job-info {
+  flex: 1;
+}
+
+.job-actions {
+  flex-shrink: 0;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #666;
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stems-header {
+  margin: 20px 0 15px 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.original-audio-header {
+  margin: 15px 0 10px 0;
+  color: #333;
+  font-size: 1.1rem;
+}

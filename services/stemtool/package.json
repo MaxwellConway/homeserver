@@ -1,0 +1,26 @@
+{
+  "name": "stemtool",
+  "version": "1.0.0",
+  "description": "YouTube video stem separation tool using yt-dlp and Demucs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "build": "npm run build:client",
+    "build:client": "cd client && npm run build"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^9.0.0",
+    "fs-extra": "^11.1.1",
+    "child_process": "^1.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["youtube", "audio", "stems", "demucs", "yt-dlp"],
+  "author": "Maxwell Conway",
+  "license": "MIT"
+}

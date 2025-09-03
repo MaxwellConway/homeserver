@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  stream-player:
+    build: .
+    container_name: stream-player
+    restart: unless-stopped
+    volumes:
+      # NFS mounted media directory (read-only)
+      - /mnt/media:/media:ro
+      # Persistent database storage
+      - stream-player-data:/data
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stream-player.rule=Host(`stream.${DOMAIN}`)"
+      - "traefik.http.routers.stream-player.entrypoints=https"
+      - "traefik.http.routers.stream-player.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.services.stream-player.loadbalancer.server.port=3000"
+
+volumes:
+  stream-player-data:
+
+networks:
+  web:
+    external: true
+    name: ${TRAEFIK_PUBLIC_NETWORK}

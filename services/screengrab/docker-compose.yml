@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  screengrab:
+    build: .
+    container_name: screengrab
+    restart: unless-stopped
+    volumes:
+      # Mount media directories (same as Jellyfin)
+      - /mnt/media/Movies:/media/movies:ro
+      - /mnt/media/TVShows:/media/tv:ro
+      # Temporary screenshots storage
+      - screengrab_screenshots:/tmp/screenshots
+    networks:
+      - web
+    environment:
+      - NODE_ENV=production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.screengrab.rule=Host(`screengrab.${DOMAIN}`)"
+      - "traefik.http.routers.screengrab.entrypoints=https"
+      - "traefik.http.routers.screengrab.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.services.screengrab.loadbalancer.server.port=3000"
+
+volumes:
+  screengrab_screenshots:
+
+networks:
+  web:
+    external: true
+    name: ${TRAEFIK_PUBLIC_NETWORK}
