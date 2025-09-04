@@ -14,7 +14,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.stemtool.rule=Host(`stemtool.maxconway.com`)"
       - "traefik.http.routers.stemtool.tls=true"
-      - "traefik.http.routers.stemtool.tls.certresolver=lets-encrypt"
+      - "traefik.http.routers.stemtool.tls.certresolver=letsencrypt"
       - "traefik.http.services.stemtool.loadbalancer.server.port=3001"
 
 networks:

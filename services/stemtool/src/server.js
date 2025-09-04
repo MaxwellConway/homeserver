@@ -246,11 +246,10 @@ function downloadAudio(url, outputDir, progressCallback) {
 // Separate stems using Demucs
 function separateStems(audioFile, outputDir, progressCallback) {
   return new Promise((resolve, reject) => {
-    // Use --name to specify output directory name and avoid spaces in paths
+    // Use default htdemucs model for stem separation
     const demucs = spawn('python', [
       '-m', 'demucs', 
       '--out', outputDir,
-      '--name', 'stems',
       audioFile
     ]);
     
@@ -263,24 +262,35 @@ function separateStems(audioFile, outputDir, progressCallback) {
         progressCallback(0.1);
       } else if (output.includes('Processing')) {
         progressCallback(0.5);
+      } else if (output.includes('100%')) {
+        progressCallback(0.9);
       }
     });
     
     demucs.stderr.on('data', (data) => {
-      console.error('demucs stderr:', data.toString());
+      const errorOutput = data.toString();
+      console.error('demucs stderr:', errorOutput);
+      
+      // Log specific error patterns for debugging
+      if (errorOutput.includes('FATAL')) {
+        console.error('FATAL Demucs error detected:', errorOutput);
+      }
+      if (errorOutput.includes('model')) {
+        console.error('Model-related error:', errorOutput);
+      }
     });
     
     demucs.on('close', (code) => {
       if (code === 0) {
         try {
-          // Find separated stems in the specified output directory
-          const separatedDir = path.join(outputDir, 'stems');
+          // Find separated stems in the htdemucs directory (default output structure)
+          const htdemucsDir = path.join(outputDir, 'htdemucs');
           
-          if (fs.existsSync(separatedDir)) {
-            const stemDirs = fs.readdirSync(separatedDir);
+          if (fs.existsSync(htdemucsDir)) {
+            const stemDirs = fs.readdirSync(htdemucsDir);
             
             if (stemDirs.length > 0) {
-              const stemDir = path.join(separatedDir, stemDirs[0]);
+              const stemDir = path.join(htdemucsDir, stemDirs[0]);
               const stemFiles = fs.readdirSync(stemDir)
                 .filter(f => f.endsWith('.wav'))
                 .map(f => path.basename(f));
@@ -298,32 +308,7 @@ function separateStems(audioFile, outputDir, progressCallback) {
               reject(new Error('No stems found after separation'));
             }
           } else {
-            // Fallback to default htdemucs directory
-            const fallbackDir = path.join(outputDir, 'htdemucs');
-            if (fs.existsSync(fallbackDir)) {
-              const stemDirs = fs.readdirSync(fallbackDir);
-              
-              if (stemDirs.length > 0) {
-                const stemDir = path.join(fallbackDir, stemDirs[0]);
-                const stemFiles = fs.readdirSync(stemDir)
-                  .filter(f => f.endsWith('.wav'))
-                  .map(f => path.basename(f));
-                
-                // Move stem files to main job directory for easier access
-                stemFiles.forEach(file => {
-                  const srcPath = path.join(stemDir, file);
-                  const destPath = path.join(outputDir, file);
-                  fs.moveSync(srcPath, destPath);
-                });
-                
-                progressCallback(1.0);
-                resolve(stemFiles);
-              } else {
-                reject(new Error('No stems found after separation'));
-              }
-            } else {
-              reject(new Error('No separated stems directory found'));
-            }
+            reject(new Error('No htdemucs directory found - separation may have failed'));
           }
         } catch (error) {
           reject(new Error(`Error processing stems: ${error.message}`));

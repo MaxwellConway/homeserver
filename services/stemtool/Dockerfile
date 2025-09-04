@@ -12,6 +12,7 @@ FROM python:3.10-slim AS final
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     curl \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js
@@ -21,8 +22,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 # Install yt-dlp
 RUN pip install yt-dlp
 
-# Install Demucs
-RUN pip install demucs
+# Install Demucs with soundfile for audio backend support
+RUN pip install demucs soundfile
 
 # Set working directory
 WORKDIR /app
