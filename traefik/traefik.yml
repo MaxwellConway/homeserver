@@ -8,12 +8,17 @@ entryPoints:
 # Enable dashboard
 api:
   dashboard: true
-  insecure: false
+  insecure: true
+
+# Enable debug logging
+log:
+  level: DEBUG
 
 # Docker provider
 providers:
   docker:
     exposedByDefault: false
+    watch: true
 
 # Let's Encrypt certificates
 certificatesResolvers:

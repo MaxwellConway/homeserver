@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  majorasmax-frontend:
+    build: .
+    container_name: majorasmax-frontend
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      # Root domain routing for both domains
+      - "traefik.http.routers.majorasmax-frontend.rule=Host(`majorasmax.com`) || Host(`maxconway.com`)"
+      - "traefik.http.routers.majorasmax-frontend.entrypoints=http,https"
+      - "traefik.http.routers.majorasmax-frontend.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.services.majorasmax-frontend.loadbalancer.server.port=80"
+
+networks:
+  web:
+    external: true
+    name: web

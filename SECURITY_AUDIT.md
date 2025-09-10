@@ -15,9 +15,9 @@
 - **Recommendation**: Pin to specific versions
 
 ### 3. Basic Auth Credentials
-- **Issue**: Weak basic auth in Traefik dashboard (admin/admin123)
-- **Risk**: Easy brute force target
-- **Recommendation**: Use strong passwords or OAuth integration
+- **Status**: Unable to verify - .env file is properly protected
+- **Note**: README.md contained example credentials that have been removed
+- **Recommendation**: Ensure strong passwords are used (appears to be configured)
 
 ### 4. Missing Security Headers
 - **Issue**: No security middleware configured in Traefik
@@ -71,8 +71,8 @@
 
 ## Immediate Actions Required
 
-1. Change Traefik basic auth password
-2. Pin Docker image versions
-3. Implement Docker socket proxy
-4. Add resource limits to containers
-5. Clean up unused Docker images
+1. Pin Docker image versions
+2. Implement Docker socket proxy
+3. Add resource limits to containers
+4. Clean up unused Docker images
+5. Add security headers middleware

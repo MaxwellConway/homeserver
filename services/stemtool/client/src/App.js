@@ -7,6 +7,36 @@ function App() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sessionId, setSessionId] = useState(null);
+
+  // Configure axios to include session ID in headers
+  useEffect(() => {
+    const storedSessionId = localStorage.getItem('stemtool-session-id');
+    if (storedSessionId) {
+      setSessionId(storedSessionId);
+      axios.defaults.headers.common['X-Session-Id'] = storedSessionId;
+    }
+
+    // Add response interceptor to capture session ID from server
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => {
+        const newSessionId = response.headers['x-session-id'];
+        if (newSessionId && newSessionId !== sessionId) {
+          setSessionId(newSessionId);
+          localStorage.setItem('stemtool-session-id', newSessionId);
+          axios.defaults.headers.common['X-Session-Id'] = newSessionId;
+        }
+        return response;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [sessionId]);
 
   // Fetch jobs on component mount and periodically
   useEffect(() => {
@@ -61,6 +91,11 @@ function App() {
         <header className="header">
           <h1>🎵 StemTool</h1>
           <p>AI-powered music stem separation from YouTube videos</p>
+          {sessionId && (
+            <div className="session-info">
+              <small>Session: {sessionId.substring(0, 8)}... | Jobs auto-delete after 10 minutes</small>
+            </div>
+          )}
         </header>
 
         <div className="card">
@@ -108,6 +143,32 @@ function App() {
 }
 
 function JobItem({ job, onDelete, getFileUrl }) {
+  const [timeRemaining, setTimeRemaining] = useState('');
+
+  useEffect(() => {
+    if (!job.expiresAt) return;
+
+    const updateTimeRemaining = () => {
+      const now = new Date();
+      const expires = new Date(job.expiresAt);
+      const diff = expires - now;
+
+      if (diff <= 0) {
+        setTimeRemaining('Expired');
+        return;
+      }
+
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setTimeRemaining(`${minutes}m ${seconds}s`);
+    };
+
+    updateTimeRemaining();
+    const interval = setInterval(updateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [job.expiresAt]);
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return 'status-completed';
@@ -130,6 +191,11 @@ function JobItem({ job, onDelete, getFileUrl }) {
             {job.status}
           </span>
           <div className="job-url">{job.url}</div>
+          {timeRemaining && (
+            <div className="time-remaining">
+              ⏱️ Expires in: {timeRemaining}
+            </div>
+          )}
         </div>
         <button
           className="btn btn-danger btn-small"
@@ -165,7 +231,11 @@ function JobItem({ job, onDelete, getFileUrl }) {
       {job.files?.original && (
         <div className="audio-player">
           <h4>📻 Original Audio</h4>
-          <audio controls>
+          <audio 
+            controls 
+            preload="metadata"
+            onError={(e) => console.error('Audio error:', e)}
+          >
             <source src={getFileUrl(job.id, job.files.original)} type="audio/wav" />
             Your browser does not support the audio element.
           </audio>
@@ -173,7 +243,7 @@ function JobItem({ job, onDelete, getFileUrl }) {
             <a 
               href={getFileUrl(job.id, job.files.original, true)}
               className="btn btn-secondary btn-small"
-              download
+              download={job.files.original}
             >
               💾 Download
             </a>
@@ -188,7 +258,11 @@ function JobItem({ job, onDelete, getFileUrl }) {
             {job.files.stems.map((stem, index) => (
               <div key={index} className="stem-item">
                 <div className="stem-name">{formatStemName(stem)}</div>
-                <audio controls>
+                <audio 
+                  controls 
+                  preload="metadata"
+                  onError={(e) => console.error('Audio error:', e)}
+                >
                   <source src={getFileUrl(job.id, stem)} type="audio/wav" />
                   Your browser does not support the audio element.
                 </audio>
@@ -196,7 +270,7 @@ function JobItem({ job, onDelete, getFileUrl }) {
                   <a 
                     href={getFileUrl(job.id, stem, true)}
                     className="btn btn-secondary btn-small"
-                    download
+                    download={stem}
                   >
                     💾 Download
                   </a>

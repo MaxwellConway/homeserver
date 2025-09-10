@@ -8,13 +8,38 @@ const { spawn } = require('child_process');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '../client/build')));
+// Session-based job storage - each session has its own jobs
+const sessionJobs = new Map();
+// Job timeout in milliseconds (10 minutes)
+const JOB_TIMEOUT = 10 * 60 * 1000;
 
-// Store processing jobs in memory (in production, use Redis or database)
-const jobs = new Map();
+// Middleware
+app.use(cors({
+  credentials: true,
+  origin: true
+}));
+app.use(express.json());
+
+// Session middleware - create or retrieve session ID
+app.use((req, res, next) => {
+  let sessionId = req.headers['x-session-id'];
+  
+  if (!sessionId) {
+    sessionId = uuidv4();
+    res.setHeader('X-Session-Id', sessionId);
+  }
+  
+  req.sessionId = sessionId;
+  
+  // Initialize session jobs if not exists
+  if (!sessionJobs.has(sessionId)) {
+    sessionJobs.set(sessionId, new Map());
+  }
+  
+  next();
+});
+
+app.use(express.static(path.join(__dirname, '../client/build')));
 
 // Ensure data directory exists
 const DATA_DIR = path.join(__dirname, '../data');
@@ -40,7 +65,7 @@ app.post('/api/process', async (req, res) => {
   }
 
   const jobId = uuidv4();
-  const jobDir = path.join(DATA_DIR, jobId);
+  const jobDir = path.join(DATA_DIR, req.sessionId, jobId);
   
   // Initialize job
   const job = {
@@ -54,13 +79,16 @@ app.post('/api/process', async (req, res) => {
     },
     files: {},
     error: null,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + JOB_TIMEOUT).toISOString(),
+    sessionId: req.sessionId
   };
   
-  jobs.set(jobId, job);
+  const userJobs = sessionJobs.get(req.sessionId);
+  userJobs.set(jobId, job);
   
   // Start processing asynchronously
-  processVideo(jobId, url, jobDir);
+  processVideo(req.sessionId, jobId, url, jobDir);
   
   res.json({ jobId, status: 'started' });
 });
@@ -68,7 +96,8 @@ app.post('/api/process', async (req, res) => {
 // Get job status
 app.get('/api/jobs/:jobId', (req, res) => {
   const { jobId } = req.params;
-  const job = jobs.get(jobId);
+  const userJobs = sessionJobs.get(req.sessionId);
+  const job = userJobs ? userJobs.get(jobId) : null;
   
   if (!job) {
     return res.status(404).json({ error: 'Job not found' });
@@ -77,9 +106,14 @@ app.get('/api/jobs/:jobId', (req, res) => {
   res.json(job);
 });
 
-// Get all jobs
+// Get all jobs for current session
 app.get('/api/jobs', (req, res) => {
-  const allJobs = Array.from(jobs.values()).sort((a, b) => 
+  const userJobs = sessionJobs.get(req.sessionId);
+  if (!userJobs) {
+    return res.json([]);
+  }
+  
+  const allJobs = Array.from(userJobs.values()).sort((a, b) => 
     new Date(b.createdAt) - new Date(a.createdAt)
   );
   res.json(allJobs);
@@ -88,42 +122,80 @@ app.get('/api/jobs', (req, res) => {
 // Serve audio files
 app.get('/api/files/:jobId/:filename', (req, res) => {
   const { jobId, filename } = req.params;
-  const job = jobs.get(jobId);
+  
+  // Find the job across all sessions since file requests don't always include session headers
+  let job = null;
+  let sessionId = null;
+  
+  for (const [sid, userJobs] of sessionJobs.entries()) {
+    const foundJob = userJobs.get(jobId);
+    if (foundJob) {
+      job = foundJob;
+      sessionId = sid;
+      break;
+    }
+  }
   
   if (!job) {
     return res.status(404).json({ error: 'Job not found' });
   }
   
-  const filePath = path.join(DATA_DIR, jobId, filename);
+  const filePath = path.join(DATA_DIR, sessionId, jobId, filename);
   
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'File not found' });
   }
   
+  // Get file stats for proper headers
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  
   // Set appropriate headers for audio streaming
   res.setHeader('Content-Type', 'audio/wav');
+  res.setHeader('Content-Length', fileSize);
   res.setHeader('Accept-Ranges', 'bytes');
   
-  // Handle download parameter
-  if (req.query.download === 'true') {
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  // Handle range requests for audio streaming
+  const range = req.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = (end - start) + 1;
+    
+    res.status(206);
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+    res.setHeader('Content-Length', chunksize);
+    
+    const stream = fs.createReadStream(filePath, { start, end });
+    stream.pipe(res);
+  } else {
+    // Handle download parameter
+    if (req.query.download === 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    } else {
+      // For inline playback, set proper headers
+      res.setHeader('Content-Disposition', 'inline');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+    
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
   }
-  
-  const stream = fs.createReadStream(filePath);
-  stream.pipe(res);
 });
 
 // Delete job and its files
 app.delete('/api/jobs/:jobId', async (req, res) => {
   const { jobId } = req.params;
-  const job = jobs.get(jobId);
+  const userJobs = sessionJobs.get(req.sessionId);
+  const job = userJobs ? userJobs.get(jobId) : null;
   
   if (!job) {
     return res.status(404).json({ error: 'Job not found' });
   }
   
   // Remove files
-  const jobDir = path.join(DATA_DIR, jobId);
+  const jobDir = path.join(DATA_DIR, req.sessionId, jobId);
   try {
     await fs.remove(jobDir);
   } catch (error) {
@@ -131,19 +203,15 @@ app.delete('/api/jobs/:jobId', async (req, res) => {
   }
   
   // Remove from memory
-  jobs.delete(jobId);
+  userJobs.delete(jobId);
   
   res.json({ message: 'Job deleted successfully' });
 });
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build/index.html'));
-});
-
 // Process video function
-async function processVideo(jobId, url, jobDir) {
-  const job = jobs.get(jobId);
+async function processVideo(sessionId, jobId, url, jobDir) {
+  const userJobs = sessionJobs.get(sessionId);
+  const job = userJobs.get(jobId);
   
   try {
     // Create job directory
@@ -152,39 +220,44 @@ async function processVideo(jobId, url, jobDir) {
     // Step 1: Download audio using yt-dlp
     job.status = 'downloading';
     job.steps.download = 'running';
-    jobs.set(jobId, job);
+    userJobs.set(jobId, job);
     
     const audioFile = await downloadAudio(url, jobDir, (progress) => {
       job.progress = Math.floor(progress * 0.3); // Download is 30% of total progress
-      jobs.set(jobId, job);
+      userJobs.set(jobId, job);
     });
     
     job.steps.download = 'completed';
     job.files.original = path.basename(audioFile);
     job.progress = 30;
-    jobs.set(jobId, job);
+    userJobs.set(jobId, job);
     
     // Step 2: Separate stems using Demucs
     job.status = 'separating';
     job.steps.separate = 'running';
-    jobs.set(jobId, job);
+    userJobs.set(jobId, job);
     
     const stemFiles = await separateStems(audioFile, jobDir, (progress) => {
       job.progress = 30 + Math.floor(progress * 0.7); // Separation is 70% of total progress
-      jobs.set(jobId, job);
+      userJobs.set(jobId, job);
     });
     
     job.steps.separate = 'completed';
     job.files.stems = stemFiles;
     job.progress = 100;
     job.status = 'completed';
-    jobs.set(jobId, job);
+    userJobs.set(jobId, job);
+    
+    // Schedule automatic cleanup after timeout
+    setTimeout(() => {
+      cleanupJob(sessionId, jobId);
+    }, JOB_TIMEOUT);
     
   } catch (error) {
     console.error('Processing error:', error);
     job.status = 'error';
     job.error = error.message;
-    jobs.set(jobId, job);
+    userJobs.set(jobId, job);
   }
 }
 
@@ -320,6 +393,116 @@ function separateStems(audioFile, outputDir, progressCallback) {
   });
 }
 
+// Cleanup function for expired jobs
+async function cleanupJob(sessionId, jobId) {
+  const userJobs = sessionJobs.get(sessionId);
+  if (!userJobs) return;
+  
+  const job = userJobs.get(jobId);
+  if (!job) return;
+  
+  console.log(`Cleaning up expired job: ${jobId} for session: ${sessionId}`);
+  
+  // Remove files
+  const jobDir = path.join(DATA_DIR, sessionId, jobId);
+  try {
+    await fs.remove(jobDir);
+    console.log(`Removed job directory: ${jobDir}`);
+  } catch (error) {
+    console.error('Error removing job files during cleanup:', error);
+  }
+  
+  // Remove from memory
+  userJobs.delete(jobId);
+  
+  // Clean up empty session if no jobs remain
+  if (userJobs.size === 0) {
+    sessionJobs.delete(sessionId);
+    
+    // Remove empty session directory
+    const sessionDir = path.join(DATA_DIR, sessionId);
+    try {
+      await fs.remove(sessionDir);
+      console.log(`Removed empty session directory: ${sessionDir}`);
+    } catch (error) {
+      console.error('Error removing session directory:', error);
+    }
+  }
+}
+
+// Periodic cleanup service for orphaned files and expired jobs
+function startCleanupService() {
+  setInterval(async () => {
+    console.log('Running periodic cleanup...');
+    
+    const now = new Date();
+    let cleanedCount = 0;
+    
+    // Check all sessions for expired jobs
+    for (const [sessionId, userJobs] of sessionJobs.entries()) {
+      const expiredJobs = [];
+      
+      for (const [jobId, job] of userJobs.entries()) {
+        if (new Date(job.expiresAt) < now) {
+          expiredJobs.push(jobId);
+        }
+      }
+      
+      // Clean up expired jobs
+      for (const jobId of expiredJobs) {
+        await cleanupJob(sessionId, jobId);
+        cleanedCount++;
+      }
+    }
+    
+    // Clean up orphaned directories (directories without corresponding jobs)
+    try {
+      const sessionDirs = await fs.readdir(DATA_DIR);
+      for (const sessionDir of sessionDirs) {
+        const sessionPath = path.join(DATA_DIR, sessionDir);
+        const stat = await fs.stat(sessionPath);
+        
+        if (stat.isDirectory()) {
+          const userJobs = sessionJobs.get(sessionDir);
+          
+          if (!userJobs || userJobs.size === 0) {
+            // Session has no active jobs, remove directory
+            await fs.remove(sessionPath);
+            console.log(`Removed orphaned session directory: ${sessionPath}`);
+            cleanedCount++;
+          } else {
+            // Check for orphaned job directories within session
+            const jobDirs = await fs.readdir(sessionPath);
+            for (const jobDir of jobDirs) {
+              if (!userJobs.has(jobDir)) {
+                const jobPath = path.join(sessionPath, jobDir);
+                await fs.remove(jobPath);
+                console.log(`Removed orphaned job directory: ${jobPath}`);
+                cleanedCount++;
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error during orphaned file cleanup:', error);
+    }
+    
+    if (cleanedCount > 0) {
+      console.log(`Cleanup completed: ${cleanedCount} items cleaned`);
+    }
+  }, 5 * 60 * 1000); // Run every 5 minutes
+}
+
+// Serve React app for all other routes (must be last)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build/index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`Stemtool server running on port ${PORT}`);
+  console.log(`Job timeout set to ${JOB_TIMEOUT / 1000 / 60} minutes`);
+  
+  // Start the cleanup service
+  startCleanupService();
 });

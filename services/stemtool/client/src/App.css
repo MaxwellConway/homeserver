@@ -3,6 +3,19 @@
   min-height: 100vh;
 }
 
+.session-info {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.session-info small {
+  color: #b0b0b0;
+  font-size: 12px;
+}
+
 .job-header {
   display: flex;
   justify-content: space-between;
@@ -16,6 +29,16 @@
 
 .job-actions {
   flex-shrink: 0;
+}
+
+.time-remaining {
+  font-size: 12px;
+  color: #ffa726;
+  margin-top: 5px;
+  padding: 4px 8px;
+  background: rgba(255, 167, 38, 0.1);
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .progress-text {

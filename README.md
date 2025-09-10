@@ -9,7 +9,7 @@ A clean, simple homeserver setup for hosting personal projects and services.
 ./start.sh
 
 # Access your services
-# Traefik Dashboard: https://traefik.maxconway.com (admin/admin123)
+# Traefik Dashboard: https://traefik.maxconway.com (requires authentication)
 # Portainer: https://portainer.maxconway.com
 ```
 

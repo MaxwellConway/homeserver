@@ -8,6 +8,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik.yml:/traefik.yml:ro
@@ -37,4 +38,4 @@ services:
 networks:
   web:
     external: true
-    name: ${TRAEFIK_PUBLIC_NETWORK}
+    name: web
