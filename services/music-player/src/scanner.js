@@ -33,14 +33,17 @@ class MusicScanner {
     }
   }
 
-  async scanDirectory(dir, relativePath = '') {
+  async scanDirectory(dir, relativePath = '', existingSongsCache = null) {
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       
-      // First pass: count total files for progress tracking
+      // First pass: count total files and load existing songs cache once
       if (relativePath === '') {
         this.scanProgress.total = await this.countAudioFiles(dir);
         console.log(`Found ${this.scanProgress.total} audio files to process`);
+        // Load all songs once at the start instead of per-file
+        existingSongsCache = await this.db.getAllSongs();
+        console.log(`Loaded ${existingSongsCache.length} existing songs from database`);
       }
 
       for (const entry of entries) {
@@ -48,11 +51,11 @@ class MusicScanner {
         const relativeFilePath = path.join(relativePath, entry.name);
 
         if (entry.isDirectory()) {
-          await this.scanDirectory(fullPath, relativeFilePath);
+          await this.scanDirectory(fullPath, relativeFilePath, existingSongsCache);
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).toLowerCase();
           if (this.audioExtensions.includes(ext)) {
-            await this.processSongFile(fullPath, relativeFilePath);
+            await this.processSongFile(fullPath, relativeFilePath, existingSongsCache);
             this.scanProgress.current++;
             
             // Log progress every 100 files
@@ -91,14 +94,13 @@ class MusicScanner {
     return count;
   }
 
-  async processSongFile(fullPath, relativeFilePath) {
+  async processSongFile(fullPath, relativeFilePath, existingSongsCache) {
     try {
       const stats = await fs.stat(fullPath);
       const lastModified = Math.floor(stats.mtime.getTime() / 1000);
       
       // Check if file already exists in database and hasn't been modified
-      const existingSongs = await this.db.getAllSongs();
-      const existingSong = existingSongs.find(song => song.path === relativeFilePath);
+      const existingSong = existingSongsCache?.find(song => song.path === relativeFilePath);
       
       if (existingSong && existingSong.lastModified >= lastModified) {
         // File hasn't changed, skip processing

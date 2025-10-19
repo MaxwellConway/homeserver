@@ -33,9 +33,6 @@ app.use('/api', (req, res, next) => {
 // API endpoint to get songs with pagination and search
 app.get('/api/songs', async (req, res) => {
   try {
-    // Trigger quick scan check (non-blocking)
-    scanner.quickScan().catch(console.error);
-    
     // Parse query parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
@@ -228,6 +225,11 @@ app.get('/api/artists', async (req, res) => {
     res.status(500).json({ error: 'Failed to get artists' });
   }
 });
+
+// Periodic quick scan check every 10 minutes (non-blocking)
+setInterval(() => {
+  scanner.quickScan().catch(console.error);
+}, 600000);
 
 // API endpoint to get scan progress
 app.get('/api/scan/progress', (req, res) => {

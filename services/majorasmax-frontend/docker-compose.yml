@@ -9,8 +9,8 @@ services:
       - web
     labels:
       - "traefik.enable=true"
-      # Root domain routing for both domains
-      - "traefik.http.routers.majorasmax-frontend.rule=Host(`majorasmax.com`) || Host(`maxconway.com`)"
+      # Root domain routing for majorasmax.com only
+      - "traefik.http.routers.majorasmax-frontend.rule=Host(`majorasmax.com`)"
       - "traefik.http.routers.majorasmax-frontend.entrypoints=http,https"
       - "traefik.http.routers.majorasmax-frontend.tls.certresolver=letsencrypt-dns"
       - "traefik.http.services.majorasmax-frontend.loadbalancer.server.port=80"
