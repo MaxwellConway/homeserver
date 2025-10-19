@@ -2,7 +2,8 @@
 # Health Check Script
 # Monitors all services and reports status
 
-set -e
+# Don't exit on errors - we want to see all status checks
+set +e
 
 echo "🏥 Homeserver Health Check"
 echo "=========================="
@@ -53,13 +54,21 @@ check_service "portainer"
 
 # Check application services
 check_service "maxconway-portfolio"
-check_service "gamernet"
-check_service "elden-ring"
+check_service "majorasmax-frontend"
+check_service "stemtool"
+check_service "screengrab"
+
+# Check Immich services
+check_service "immich_server"
+check_service "immich_microservices"
+check_service "immich_machine_learning"
+check_service "immich_postgres"
+check_service "immich_redis"
+
+# Check media services
 check_service "jellyfin"
 check_service "music-player"
 check_service "stream-player"
-check_service "stemtool"
-check_service "screengrab"
 
 echo ""
 echo "🌐 Endpoint Health:"
@@ -67,16 +76,25 @@ echo "-------------------"
 
 # Check public endpoints (if domain is accessible)
 if [ ! -z "$DOMAIN" ]; then
+    echo "Core Infrastructure:"
     check_endpoint "https://traefik.$DOMAIN" "Traefik Dashboard"
     check_endpoint "https://portainer.$DOMAIN" "Portainer"
+    
+    echo ""
+    echo "Web Applications:"
     check_endpoint "https://maxconway.com" "Portfolio"
+    check_endpoint "https://majorasmax.com" "Majorasmax Frontend"
     check_endpoint "https://gamernet.$DOMAIN" "Gamernet"
-    check_endpoint "https://eldenring.$DOMAIN" "Elden Ring"
+    check_endpoint "https://eldenring.maxconway.com" "Elden Ring"
+    check_endpoint "https://stemtool.maxconway.com" "Stemtool"
+    check_endpoint "https://screengrab.$DOMAIN" "Screengrab"
+    
+    echo ""
+    echo "Media Services:"
+    check_endpoint "https://photos.maxconway.com" "Immich Photos"
     check_endpoint "https://media.$DOMAIN" "Jellyfin"
     check_endpoint "https://music.$DOMAIN" "Music Player"
     check_endpoint "https://stream.$DOMAIN" "Stream Player"
-    check_endpoint "https://stemtool.maxconway.com" "Stemtool"
-    check_endpoint "https://screengrab.$DOMAIN" "Screengrab"
 fi
 
 echo ""
@@ -87,7 +105,25 @@ docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\
 echo ""
 echo "💾 Disk Usage:"
 echo "--------------"
+
+# Get disk usage percentage
+DISK_USAGE=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
+
+# Display disk info
 df -h / | tail -1
+
+# Alert if disk usage is high
+if [ "$DISK_USAGE" -gt 85 ]; then
+    echo "🔴 CRITICAL: Disk usage at ${DISK_USAGE}% - immediate action required!"
+elif [ "$DISK_USAGE" -gt 75 ]; then
+    echo "⚠️  WARNING: Disk usage at ${DISK_USAGE}% - consider cleanup soon"
+elif [ "$DISK_USAGE" -gt 60 ]; then
+    echo "⚡ NOTICE: Disk usage at ${DISK_USAGE}% - monitor closely"
+else
+    echo "✅ Disk usage healthy at ${DISK_USAGE}%"
+fi
+
+echo ""
 docker system df
 
 echo ""
