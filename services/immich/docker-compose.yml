@@ -5,8 +5,9 @@ services:
     container_name: immich_server
     image: ghcr.io/immich-app/immich-server:release
     command: ['start.sh', 'immich']
+    user: "1000:1000"
     volumes:
-      - ${UPLOAD_LOCATION}:/usr/src/app/upload
+      - /mnt/media/Photos/Immich-Uploads:/usr/src/app/upload
       - /etc/localtime:/etc/localtime:ro
       - /mnt/media/Photos:/usr/src/app/external:ro
     env_file:
@@ -30,8 +31,9 @@ services:
     container_name: immich_microservices
     image: ghcr.io/immich-app/immich-server:release
     command: ['start.sh', 'microservices']
+    user: "1000:1000"
     volumes:
-      - ${UPLOAD_LOCATION}:/usr/src/app/upload
+      - /mnt/media/Photos/Immich-Uploads:/usr/src/app/upload
       - /etc/localtime:/etc/localtime:ro
       - /mnt/media/Photos:/usr/src/app/external:ro
     env_file:
