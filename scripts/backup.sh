@@ -44,14 +44,28 @@ done
 echo "🗃️  Backing up Docker volumes..."
 
 # Backup important Docker volumes
-docker run --rm -v portainer_data:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/portainer_data.tar.gz -C /data .
-docker run --rm -v music-player-data:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/music-player-data.tar.gz -C /data .
-docker run --rm -v stream-player-data:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/stream-player-data.tar.gz -C /data .
-docker run --rm -v screengrab_screenshots:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/screengrab_screenshots.tar.gz -C /data .
+echo "Backing up Portainer data..."
+docker run --rm -v portainer_data:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/portainer_data.tar.gz -C /data . 2>/dev/null || echo "⚠️  Portainer volume not found"
+
+echo "Backing up Immich data..."
+docker run --rm -v immich_pgdata:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/immich_pgdata.tar.gz -C /data . 2>/dev/null || echo "⚠️  Immich pgdata volume not found"
+docker run --rm -v immich_model-cache:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/immich_model-cache.tar.gz -C /data . 2>/dev/null || echo "⚠️  Immich model-cache volume not found"
+
+echo "Backing up media player data..."
+docker run --rm -v music-player-data:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/music-player-data.tar.gz -C /data . 2>/dev/null || echo "⚠️  Music player volume not found"
+docker run --rm -v stream-player-data:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/stream-player-data.tar.gz -C /data . 2>/dev/null || echo "⚠️  Stream player volume not found"
+docker run --rm -v screengrab_screenshots:/data -v "$BACKUP_PATH":/backup alpine tar czf /backup/screengrab_screenshots.tar.gz -C /data . 2>/dev/null || echo "⚠️  Screengrab volume not found"
 
 # Backup Jellyfin config if it exists
 if [ -d "/home/maxwell/homeserver/services/jellyfin/config" ]; then
+    echo "Backing up Jellyfin config..."
     tar czf "$BACKUP_PATH/jellyfin_config.tar.gz" -C /home/maxwell/homeserver/services/jellyfin config
+fi
+
+# Backup Immich library if it exists
+if [ -d "/home/maxwell/homeserver/services/immich/library" ]; then
+    echo "Backing up Immich library..."
+    tar czf "$BACKUP_PATH/immich_library.tar.gz" -C /home/maxwell/homeserver/services/immich library
 fi
 
 echo "📋 Creating backup manifest..."
@@ -65,10 +79,20 @@ Backup Contents:
 - Traefik configuration
 - Portainer configuration  
 - Main scripts (start.sh, update.sh)
+- Utility scripts (backup.sh, cleanup.sh, health-check.sh)
 - Service configurations (docker-compose.yml files)
 - Service source code (src directories)
-- Docker volume data (portainer, music-player, stream-player, screengrab)
+- Docker volume data:
+  * Portainer data
+  * Immich database (PostgreSQL)
+  * Immich ML model cache
+  * Immich library uploads
+  * Music player data
+  * Stream player data
+  * Screengrab screenshots
 - Jellyfin configuration
+
+NOTE: /mnt/media/Photos is NOT backed up (external NFS mount)
 
 Backup Size: $(du -sh "$BACKUP_PATH" | cut -f1)
 Created: $(date)

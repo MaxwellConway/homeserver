@@ -10,9 +10,9 @@ api:
   dashboard: true
   insecure: true
 
-# Enable debug logging
+# Production logging
 log:
-  level: DEBUG
+  level: INFO
 
 # Docker provider
 providers:
