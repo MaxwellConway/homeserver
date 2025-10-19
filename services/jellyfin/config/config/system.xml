@@ -9,6 +9,7 @@
   <EnableCaseSensitiveItemIds>true</EnableCaseSensitiveItemIds>
   <DisableLiveTvChannelUserDataName>true</DisableLiveTvChannelUserDataName>
   <MetadataPath />
+  <MetadataNetworkPath />
   <PreferredMetadataLanguage>en</PreferredMetadataLanguage>
   <MetadataCountryCode>US</MetadataCountryCode>
   <SortReplaceCharacters>
@@ -175,7 +176,6 @@
   <TrickplayOptions>
     <EnableHwAcceleration>false</EnableHwAcceleration>
     <EnableHwEncoding>false</EnableHwEncoding>
-    <EnableKeyFrameOnlyExtraction>false</EnableKeyFrameOnlyExtraction>
     <ScanBehavior>NonBlocking</ScanBehavior>
     <ProcessPriority>BelowNormal</ProcessPriority>
     <Interval>10000</Interval>
