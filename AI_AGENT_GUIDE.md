@@ -8,13 +8,23 @@ This guide helps AI agents understand and work with the homeserver codebase effi
 ```
 homeserver/
 ├── .env                    # Environment variables (gitignored)
-├── start.sh               # Main startup script
+├── .env.example           # Template for environment configuration
+├── start.sh               # Main startup script (core infrastructure)
 ├── update.sh              # Comprehensive update script
 ├── traefik/               # Reverse proxy configuration
+│   ├── traefik.yml       # Main Traefik config
+│   ├── docker-compose.yml
+│   └── letsencrypt/      # SSL certificates
 ├── portainer/             # Container management UI
+├── scripts/               # Utility scripts
+│   ├── backup.sh         # Backup automation
+│   ├── cleanup.sh        # Docker cleanup
+│   └── health-check.sh   # Service monitoring
 └── services/              # Individual service deployments
     ├── template/          # Service template for new deployments
-    ├── portfolio/         # Personal portfolio website
+    ├── immich/            # Photo management with AI features
+    ├── portfolio/         # Personal portfolio website (maxconway.com)
+    ├── majorasmax-frontend/ # Service directory (majorasmax.com)
     ├── gamernet/          # Gaming network service
     ├── elden-ring/        # Elden Ring related service
     ├── jellyfin/          # Media server
@@ -65,9 +75,22 @@ docker compose down && docker compose up -d
 4. **Image Bloat**: Stemtool service is 11.8GB (needs optimization)
 
 ### Service-Specific Notes
-- **Stemtool**: Missing `version` in docker-compose.yml, hardcoded domain
-- **Portfolio**: Missing network `name` field
+- **Immich**: Photo management at photos.maxconway.com
+  - Uses separate `immich` network for internal services (postgres, redis, ML)
+  - Mounts /mnt/media/Photos as read-only external library
+  - Requires .env file with database credentials
+- **Portfolio**: Serves maxconway.com root domain
+  - Static site with Nginx
+  - Uses letsencrypt-dns resolver
+- **Majorasmax-frontend**: Service directory at majorasmax.com
+  - Currently routes both majorasmax.com AND maxconway.com (conflict with portfolio)
+  - Should only route majorasmax.com
+- **Stemtool**: Audio processing tool
+  - Port 3001 exposed (security issue - should be removed)
+  - Session-based isolation with automatic cleanup
+  - Dual domain routing: stemtool.majorasmax.com and stemtool.maxconway.com
 - **Jellyfin**: Requires NFS mounts at `/mnt/media/*`
+  - Uses `latest` tag (should be pinned)
 - **Music/Stream Players**: Similar codebases, potential for consolidation
 
 ### Network Configuration
@@ -78,10 +101,14 @@ docker compose down && docker compose up -d
 ## 🛡️ Security Considerations
 
 ### Current Security Issues
-1. **Weak Authentication**: Traefik uses admin/admin123
-2. **Privileged Access**: Docker socket mounted in containers
-3. **No Rate Limiting**: Missing in Traefik configuration
-4. **Missing Headers**: No security headers middleware
+1. **Docker Socket Exposure**: Traefik (read-only) and Portainer (full access) mount Docker socket
+2. **Latest Tags**: Portainer and Jellyfin use `latest` instead of pinned versions
+3. **Missing Security Headers**: No security headers middleware in Traefik
+4. **Exposed Port**: Stemtool exposes port 3001 directly (bypasses Traefik)
+5. **Domain Routing Conflict**: Portfolio and majorasmax-frontend both claim maxconway.com
+6. **Traefik API**: Exposed on port 8080 with `insecure: true`
+7. **No Resource Limits**: Containers lack memory/CPU constraints
+8. **Debug Logging**: Traefik runs with DEBUG log level in production
 
 ### Best Practices When Making Changes
 - Always pin Docker image versions
@@ -94,9 +121,21 @@ docker compose down && docker compose up -d
 
 ### Common Problems
 1. **Service Won't Start**: Check Docker logs and network connectivity
+   - Verify `web` network exists: `docker network ls | grep web`
+   - Check for port conflicts: `docker ps --format "{{.Ports}}"`
 2. **SSL Issues**: Verify DNS records and certificate resolver
+   - Use `letsencrypt-dns` for Cloudflare-proxied domains
+   - Check Cloudflare credentials in .env
+   - Wait 2-3 minutes for certificate generation
 3. **Port Conflicts**: Ensure no duplicate port mappings
+   - Only Traefik should expose 80, 443, 8080
+   - Remove direct port mappings from services
 4. **Permission Errors**: Check volume mount permissions
+   - Immich needs read access to /mnt/media/Photos
+   - Jellyfin needs access to /mnt/media/*
+5. **Domain Routing Conflicts**: Check for duplicate Host() rules
+   - maxconway.com claimed by both portfolio and majorasmax-frontend
+   - Use `docker logs traefik | grep -i "Host("` to see active routes
 
 ### Useful Debugging Commands
 ```bash
@@ -150,15 +189,26 @@ docker system prune -f
 
 ### Key Configuration Files
 - `traefik/traefik.yml`: Traefik main configuration
+  - Defines HTTP/HTTPS entrypoints
+  - Configures letsencrypt and letsencrypt-dns resolvers
+  - Docker provider with auto-discovery
 - `traefik/docker-compose.yml`: Traefik service definition
-- `services/template/docker-compose.yml`: Template for new services
-- `start.sh`: Startup script with network creation
-- `update.sh`: Update script with health checks
+  - Mounts Docker socket (read-only)
+  - Exposes ports 80, 443, 8080
+  - Loads Cloudflare credentials from .env
+- `.env`: Environment configuration (gitignored)
+  - DOMAIN, EMAIL, TRAEFIK_PUBLIC_NETWORK
+  - TRAEFIK_BASIC_AUTH credentials
+  - CLOUDFLARE_EMAIL and CLOUDFLARE_API_KEY
+- `services/*/docker-compose.yml`: Individual service definitions
+  - Most use `letsencrypt-dns` resolver
+  - All connect to `web` network
+  - Traefik labels for routing and SSL
 
 ### Documentation Files
-- `SECURITY_AUDIT.md`: Security issues and recommendations
-- `IMPROVEMENTS.md`: Detailed improvement suggestions
-- `README.md`: Basic usage instructions
+- `SECURITY_AUDIT.md`: Comprehensive security audit with action plan
+- `README.md`: Complete service documentation and troubleshooting
+- `AI_AGENT_GUIDE.md`: This file - guide for AI agents
 
 ## 🔄 Maintenance Schedule
 
@@ -182,6 +232,45 @@ docker system prune -f
 1. **Always check existing documentation** before making assumptions
 2. **Use the update.sh script** for comprehensive service updates
 3. **Monitor logs** after any changes to catch issues early
-4. **Respect the .gitignore** - never commit sensitive files
+4. **Respect the .gitignore** - never commit sensitive files (.env, letsencrypt/)
 5. **Test locally first** when possible before production changes
 6. **Document your changes** in commit messages and relevant files
+7. **Check for conflicts** when modifying domain routing
+8. **Use letsencrypt-dns** resolver for Cloudflare-proxied domains
+9. **Avoid exposing ports** directly - let Traefik handle routing
+10. **Pin Docker image versions** instead of using `latest` tags
+
+## 🔍 Current State (as of 2025-10-08)
+
+### Active Services (16 containers)
+- **Core**: traefik, portainer
+- **Immich**: immich_server, immich_microservices, immich_machine_learning, immich_postgres, immich_redis
+- **Web Apps**: maxconway-portfolio, majorasmax-frontend, gamernet, elden-ring, stemtool, screengrab
+- **Media**: jellyfin, music-player, stream-player
+
+### Domain Routing
+- **maxconway.com**: Portfolio (conflict with majorasmax-frontend)
+- **majorasmax.com**: Majorasmax-frontend
+- **photos.maxconway.com**: Immich
+- **traefik.maxconway.com**: Traefik dashboard
+- **portainer.maxconway.com**: Portainer
+- **gamernet.maxconway.com**: Gamernet
+- **media.maxconway.com**: Jellyfin
+- **music.maxconway.com**: Music player
+- **stream.maxconway.com**: Stream player
+- **screengrab.maxconway.com**: Screengrab
+- **Dual domains**:
+  - stemtool.majorasmax.com / stemtool.maxconway.com
+  - eldenring.majorasmax.com / eldenring.maxconway.com
+
+### SSL Certificate Resolvers
+- **letsencrypt**: HTTP challenge for standard domains
+- **letsencrypt-dns**: DNS challenge for Cloudflare-proxied domains
+  - Used by: photos, stemtool, portfolio, majorasmax-frontend, elden-ring, gamernet, traefik dashboard
+
+### Known Issues to Avoid
+1. Don't add maxconway.com to new services (conflict)
+2. Don't expose ports directly (use Traefik)
+3. Don't use `latest` tags for production services
+4. Don't forget to add services to health-check.sh and update.sh
+5. Don't modify .env file (it's gitignored for security)
